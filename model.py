@@ -3,48 +3,110 @@ import torch.nn as nn
 import torchvision
 import torchvision.transforms as transforms
 
-class RNN(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, num_classes):
-        super(RNN, self).__init__()
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
-        self.fc = nn.Linear(hidden_size, num_classes)
-    
-    def forward(self, x):
-        # Set initial hidden and cell states 
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device) 
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device)
-        
-        # Forward propagate LSTM
-        out, _ = self.lstm(x, (h0, c0))  # out: tensor of shape (batch_size, seq_length, hidden_size)
-        
-        # Decode the hidden state of the last time step
-        out = self.fc(out[:, -1, :])
-        return out
+class DatasetWord2Vec():
+    def __init__(self, enDict, zhDict, dataTrain, 
+                enWord2VecDict=None, zhWord2VecDict=None, 
+                useEn=False, useZh=False
+                ):
+        self.enDict = enDict
+        self.zhDict = zhDict
+        self.dataTrain = dataTrain
+        self.enWord2VecDict = enWord2VecDict
+        self.zhWord2VecDict = zhWord2VecDict
+        self._total_data = len(dataTrain)
+    def __len__(self):
+        return self._total_data
+
+    def __getitem__(self, i):
+        if useEn and useZh:
+           return [self.enWord2VecDict[word] for word in self.enDict[self.dataTrain[i][0]]], \
+                [self.enWord2VecDict[word] for word in self.enDict[self.dataTrain[i][1]]], \
+                [self.zhWord2VecDict[word] for word in self.zhDict[self.dataTrain[i][0]]], \
+                [self.zhWord2VecDict[word] for word in self.zhDict[self.dataTrain[i][1]]], \
+                , self.dataTrain[i][2]
+        elif useEn:
+            return [self.enWord2VecDict[word] for word in self.enDict[self.dataTrain[i][0]]], \
+                [self.enWord2VecDict[word] for word in self.enDict[self.dataTrain[i][1]]], \
+                , self.dataTrain[i][2]
+        else:
+            return [self.zhWord2VecDict[word] for word in self.zhDict[self.dataTrain[i][0]]], \
+                [self.zhWord2VecDict[word] for word in self.zhDict[self.dataTrain[i][1]]], \
+                , self.dataTrain[i][2]
+
+class DatasetWordDict():
+    def __init__(self, enDict, zhDict, dataTrain, 
+                enWordDict=None, zhWordDict=None, 
+                useEn=False, useZh=False
+                ):
+        self.enDict = enDict
+        self.zhDict = zhDict
+        self.enWordDict = enWordDict
+        self.zhWordDict = zhWordDict
+        self.dataTrain = dataTrain
+        self._total_data = len(dataTrain)
+    def __len__(self):
+        return self._total_data
+
+    def __getitem__(self, i):
+        if useEn and useZh:
+           return [self.enWordDict[word] for word in self.enDict[self.dataTrain[i][0]]], \
+                [self.enWordDict[word] for word in self.enDict[self.dataTrain[i][1]]], \
+                [self.zhWordDict[word] for word in self.zhDict[self.dataTrain[i][0]]], \
+                [self.zhWordDict[word] for word in self.zhDict[self.dataTrain[i][1]]], \
+                , self.dataTrain[i][2]
+        elif useEn:
+            return [self.enWordDict[word] for word in self.enDict[self.dataTrain[i][0]]], \
+                [self.enWordDict[word] for word in self.enDict[self.dataTrain[i][1]]], \
+                , self.dataTrain[i][2]
+        else:
+            return [self.zhWordDict[word] for word in self.zhDict[self.dataTrain[i][0]]], \
+                [self.zhWordDict[word] for word in self.zhDict[self.dataTrain[i][1]]], \
+                , self.dataTrain[i][2]
 
 class Net(nn.Module):
-    def __init__(self, n_vocab, embedding_dim, hidden_dim, dropout=0.2):
-        super(Net, self).__init__()
+    def __init__(self, embedding_dim, hidden_dim, padding_len, 
+                    dropout=0.2, useEn=False, useZh=False, 
+                    enWordDict=enWordDict, zhWordDict=zhWordDict):
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
-        # nn.Embedding 可以幫我們建立好字典中每個字對應的 vector
+        self.padding_len = padding_len
+        
         self.embeddings = nn.Embedding(n_vocab, embedding_dim)
-        # LSTM layer，形狀為 (input_size, hidden_size, ...)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, dropout=dropout)
-        # Fully-connected layer，把 hidden state 線性轉換成 output
-        self.hidden2out = nn.Linear(hidden_dim, n_vocab)
-    def forward(self, seq_in):
-        # LSTM 接受的 input 形狀為 (timesteps, batch, features)，
-        # 即 (seq_length, batch_size, embedding_dim)
-        # 所以先把形狀為 (batch_size, seq_length) 的 input 轉置後，
-        # 再把每個 value (char index) 轉成 embedding vector
-        embeddings = self.embeddings(seq_in.t())
-        # LSTM 層的 output (lstm_out) 有每個 timestep 出來的結果
-        #（也就是每個字進去都會輸出一個 hidden state）
-        # 這邊我們取最後一層的結果，即最近一次的結果，來預測下一個字
-        lstm_out, _ = self.lstm(embeddings)
-        ht = lstm_out[-1]
-        # 線性轉換至 output
-        out = self.hidden2out(ht)
-        return out
+        self.bi_gru = nn.GRU(embedding_dim, hidden_dim, num_layers=1, dropout=dropout, bidirectional=True)
+        self.linear1 = nn.Linear(hidden_dim, 32)
+        self.linear2 = nn.Linear(32, 3)
+    def forward(self, sentence1, sentence1Len, sentence2, sentence2Len):   # [batch_size, len]
+        batch_size = sentence1.shape[0]
+        
+        embeddings = self.embeddings(sentence1)                         # [batch_size, len, embedding_dim]
+        s1_packed = nn.utils.rnn.pack_padded_sequence(
+                embeddings, sentence1Len, batch_first=True)
+        s1_output, _ = self.bi_gru(s1_packed)
+        s1_output_reshape = s1_output.view(batch_size, -1)    # [batch_size, 3] < [batch_size, len*embedding_dim]
+        
+        embeddings = self.embeddings(sentence2)                         # [batch_size, len, embedding_dim]
+        s2_packed = nn.utils.rnn.pack_padded_sequence(
+                embeddings, sentence1Len, batch_first=True)
+        s2_output, _ = self.bi_gru(s2_packed)
+        s2_output_reshape = s2_output.view(batch_size, -1)    # [batch_size, 3] < [batch_size, len*embedding_dim]
+
+        s1s2_cat = torch.cat([s1_output_reshape, s2_output_reshape], 1)
+        output32 = self.linear1(s1s2_cat)
+        output3 = self.linear2(output32)
+        return output
+
+def collate_fn(batch):
+    sentence1, sentence2, target = zip(*batch)
+    sentence1, sentence1Len = _padding(sentence1)
+    sentence2, sentence2Len = _padding(sentence2)
+    return (sentence1, sentence1Len), (sentence2, sentence2Len), target
+
+    video = torch.tensor(video, dtype=torch.float)
+    correct_caption, correct_length = _padding(correct_caption)
+    correct_caption, correct_length, correct_indices = \
+            _sort_and_get_indices(correct_caption, correct_length)
+    wrong_caption, wrong_length = _padding(wrong_caption)
+    wrong_caption, wrong_length, wrong_indices = \
+            _sort_and_get_indices(wrong_caption, wrong_length)
+    return video, (correct_caption, correct_length, correct_indices),\
+            (wrong_caption, wrong_length, wrong_indices)
