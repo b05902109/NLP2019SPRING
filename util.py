@@ -18,7 +18,7 @@ def loadData(args, target='trainData'):
     elif target == 'testData':
         path = os.path.join(args.pathPrefix, args.dataFolder, args.testData)
 
-    print('==== load data from: ' + path + ' ====')
+    print('==== load data from: ' + path + ' start ====')
     with open(path, encoding='utf8') as csvfile:
         rows = csv.reader(csvfile)
         for index, row in enumerate(rows):
@@ -36,20 +36,20 @@ def loadData(args, target='trainData'):
             if target == 'trainData':
                 data.append([row[1], row[2], relationDict[row[7]]])
             elif target == 'testData':
-                data.append([row[1], row[2]])
-            #if index == 8000:
-            #	break
-    print('==== load data from: ' + path + ' success. ====')
+                data.append([row[1], row[2], int(row[0])])
+            if args.use_smallData and index == 8003:
+	            break
+    print('==== load data from: ' + path + ' finish ====')
     return data, zhDict, enDict
 
-def getEnWord2VecDict(args, enDict, toSave=False):
+def getEnWord2VecDict(args, enDict):
     print("==== getEnWord2VecDict start ====")
-    enWord2VecDictPath = os.path.join(args.pathPrefix, args.pretrainFolder, args.enWord2VecDict%(args.embedding_Dim))
+    enWord2VecDictPath = os.path.join(args.pathPrefix, args.pretrainFolder, args.enWord2VecDict%(args.embedding_dim))
     enWord2VecDict = None
-    if toSave:
+    if not os.path.exists(enWord2VecDictPath):
         enWord2VecPretrainDataPath = os.path.join(args.pathPrefix, args.pretrainFolder, args.enWord2VecPretrainData)
         sentences = word2vec.Text8Corpus(enWord2VecPretrainDataPath)
-        enWord2VecDict = Word2Vec(sentences, size=args.embedDim, workers = 16)
+        enWord2VecDict = Word2Vec(sentences, size=args.embedding_dim, workers = 16)
         enWord2VecDict.save(enWord2VecDictPath)
         print("==== new enWord2Vec Dict saved ====")
     else:
@@ -57,16 +57,16 @@ def getEnWord2VecDict(args, enDict, toSave=False):
         print("==== old enWord2Vec Dict loaded ====")
     return enWord2VecDict
 
-def getZhWord2VecDict(args, zhDict, toSave=False):
+def getZhWord2VecDict(args, zhDict):
     print("==== getZhWord2VecDict start ====")
-    zhWord2VecDictPath = os.path.join(args.pathPrefix, args.pretrainFolder, args.zhWord2VecDict%(args.embedding_Dim))
+    zhWord2VecDictPath = os.path.join(args.pathPrefix, args.pretrainFolder, args.zhWord2VecDict%(args.embedding_dim))
     zhWord2VecDict = None
-    if toSave:
+    if not os.path.exists(zhWord2VecDictPath):
         data = []
         for key,values in  zhDict.items():
             for word in values:
                 data.append(word)
-        zhWord2VecDict = Word2Vec(data, size=args.embedDim, workers=16)
+        zhWord2VecDict = Word2Vec(data, size=args.embedding_dim, workers=16)
         zhWord2VecDict.save(zhWord2VecDictPath)
         print("==== new zhWord2Vec Dict saved ====")
     else:
