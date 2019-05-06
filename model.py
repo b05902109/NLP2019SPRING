@@ -167,10 +167,10 @@ class bidirRNN(torch.nn.Module):
         self.dropout1 = nn.Dropout(0.5)
         self.activation1 = Swish()
         self.batchnorm = nn.BatchNorm1d(args.hidden_size)
-        self.linear2 = nn.Linear(args.hidden_size, 64)
+        self.linear2 = nn.Linear(args.hidden_size, args.li)
         self.dropout2 = nn.Dropout(0.5)
         self.activation2 = Swish()
-        self.linear3 = nn.Linear(64, 3)
+        self.linear3 = nn.Linear(args.li, 3)
 
     def forward(self, x1, x2):
         '''
@@ -194,9 +194,9 @@ class bidirRNN(torch.nn.Module):
         out = functional.softmax(out,dim=1)
         return out
 
-class enRNN_WordDict(bidirRNN):
+class RNN_WordDict(bidirRNN):
     def __init__(self, args, wordDictLen):
-        super(enRNN_WordDict, self).__init__(args)
+        super(RNN_WordDict, self).__init__(args)
         self.embeddings = nn.Embedding(wordDictLen, args.embedding_dim)
         self.bi_rnn = bidirRNN(args)
     def forward(self, sentence1, sentence2):
@@ -212,9 +212,9 @@ class enRNN_WordDict(bidirRNN):
         return out
 
 
-class enRNN_Word2Vec(bidirRNN):
+class RNN_Word2Vec(bidirRNN):
     def __init__(self, args):
-        super(enRNN_Word2Vec, self).__init__(args)
+        super(RNN_Word2Vec, self).__init__(args)
         self.bi_rnn = bidirRNN(args)
     def forward(self, sentence1, sentence2):
         '''

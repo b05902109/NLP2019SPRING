@@ -42,7 +42,7 @@ def get_args():
             help='what to do, train or predict.')
     # About path
     parser.add_argument('--pathPrefix',
-            default='../NLP_data',
+            default='.',
             help='The path prefix. Inside is four directories.')
     parser.add_argument('--dataFolder',
             default='data',
@@ -93,6 +93,10 @@ def get_args():
             default=100,
             type=int,
             help='The hidden size of model.')
+    parser.add_argument('--li',
+            default=64,
+            type=int,
+            help='The fully connected layer dimension.')
     parser.add_argument('--bidirectional',
             default=True,
             help='Gru is bidirectional or not.')

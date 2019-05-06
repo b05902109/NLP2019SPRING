@@ -108,6 +108,16 @@ def train(args, myModel, dataTrain, enDict, zhDict, enWord2VecDict, zhWord2VecDi
         status = {'state_dict':state_dict,}
         with open(modelSavePath, 'wb') as f_model:
             torch.save(status, f_model)
+
+    modelName = 'model_'
+    modelName += 'En_' if args.use_En else 'Zh_'
+    modelName += 'word2Vec_' if args.use_word2Vec else 'wordDict_'
+    modelName += 'embed%d_hid%d_li%d.h5'%(args.embedding_dim, args.hidden_size, args.li)
+    modelSavePath = os.path.join(modelSavePathPrefix, modelName)
+    state_dict = {name:value.cpu() for name, value in myModel.state_dict().items()}
+    status = {'state_dict':state_dict,}
+    with open(modelSavePath, 'wb') as f_model:
+        torch.save(status, f_model)
     print('==== train finish ====')
 
 def predict(args, myModel, dataTest, enDict, zhDict, enWord2VecDict, zhWord2VecDict, enWordDict, zhWordDict):
@@ -183,14 +193,14 @@ if __name__ == '__main__':
         zhWordDict = getWordDict(zhDict)
     if args.use_cuda:
         if args.use_word2Vec:
-            myModel = enRNN_Word2Vec(args).cuda()
+            myModel = RNN_Word2Vec(args).cuda()
         else:
-            myModel = enRNN_WordDict(args, len(enWordDict)).cuda()
+            myModel = RNN_WordDict(args, (len(enWordDict) if args.use_En else len(zhWordDict))).cuda()
     else:
         if args.use_word2Vec:
-            myModel = enRNN_Word2Vec(args)
+            myModel = RNN_Word2Vec(args)
         else:
-            myModel = enRNN_WordDict(args, len(enWordDict))
+            myModel = RNN_WordDict(args, (len(enWordDict) if args.use_En else len(zhWordDict)))
     if args.usage.lower() == 'train':
         train(args, myModel, dataTrain, enDict, zhDict, enWord2VecDict, zhWord2VecDict, enWordDict, zhWordDict)
     else:
