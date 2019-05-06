@@ -22,7 +22,29 @@ pip3 install jieba argparse numpy gensim
 
 ## Reproduce My Work
 
-- Download and put the **train.csv** & **test.csv** file in the **data** folder.
+- Download and put the **train.csv** & **test.csv** file , create a **data** folder and put into it.
+
+- Create a **pretrain** folder.
+
+- It will be like this
+
+  ```
+  .
+  ├ data
+  │	├ train.csv
+  │	└ test.csv
+  ├ model
+  │	├ model1.h5
+  │	└ model2.h5
+  ├ pretrain
+  │	└ .
+  ├ predict
+  │	└ .
+  ├ script & file
+  └ readme.md
+  ```
+
+  
 
 - Run the following command to train model.
 
